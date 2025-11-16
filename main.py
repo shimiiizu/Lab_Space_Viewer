@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from skimage import io
 from skimage.color import rgb2lab, lab2rgb
 from PIL import Image
+from scipy.spatial import ConvexHull
 
 
 def load_and_downsample_image(image_path, target_dpi=50):
@@ -76,6 +77,34 @@ def lab_to_display_color(lab_values):
     return rgb_colors
 
 
+def calculate_convex_hull_area(points_2d):
+    """
+    2次元点群の凸包面積を計算
+
+    Parameters:
+    -----------
+    points_2d : ndarray
+        (n, 2)の形状の2次元座標
+
+    Returns:
+    --------
+    hull : ConvexHull object or None
+        凸包オブジェクト
+    area : float
+        凸包の面積
+    """
+    if len(points_2d) < 3:
+        return None, 0.0
+
+    try:
+        hull = ConvexHull(points_2d)
+        area = hull.volume  # 2Dの場合、volumeが面積になる
+        return hull, area
+    except:
+        print("凸包の計算に失敗しました")
+        return None, 0.0
+
+
 def plot_lab_3d(lab_pixels, image_path, plot_size=3):
     """
     Lab値を3次元空間にプロット
@@ -103,7 +132,7 @@ def plot_lab_3d(lab_pixels, image_path, plot_size=3):
 
 def plot_ab_planes(lab_pixels, L_values=[0, 20, 50], image_path='', plot_size=3):
     """
-    指定したL値でのab平面をプロット
+    指定したL値でのab平面をプロット（凸包と面積を表示）
     """
     fig, axes = plt.subplots(1, len(L_values), figsize=(6 * len(L_values), 5))
 
@@ -130,7 +159,29 @@ def plot_ab_planes(lab_pixels, L_values=[0, 20, 50], image_path='', plot_size=3)
         # 表示用の色を生成
         colors = lab_to_display_color(filtered_pixels)
 
+        # 散布図を描画
         axes[idx].scatter(a, b, c=colors, s=plot_size, alpha=0.6)
+
+        # 凸包を計算して描画
+        points_2d = np.column_stack([a, b])
+        hull, area = calculate_convex_hull_area(points_2d)
+
+        if hull is not None:
+            # 凸包の頂点を取得
+            hull_points = points_2d[hull.vertices]
+            # 最初の点に戻るために追加
+            hull_points = np.vstack([hull_points, hull_points[0]])
+
+            # 凸包の線を描画
+            axes[idx].plot(hull_points[:, 0], hull_points[:, 1],
+                           'k-', linewidth=2, label='Convex Hull')
+
+            # 面積をグラフ内に表示
+            axes[idx].text(0.05, 0.95, f'面積: {area:.2f}',
+                           transform=axes[idx].transAxes,
+                           fontsize=11, verticalalignment='top',
+                           bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
         axes[idx].set_xlabel('a*', fontsize=12)
         axes[idx].set_ylabel('b*', fontsize=12)
         axes[idx].set_title(f'L* ≈ {L_target} (±{tolerance})\n{len(filtered_pixels)} pixels', fontsize=13)
@@ -187,7 +238,7 @@ def analyze_tif_image(image_path, target_dpi=50, L_values=[0, 20, 50], plot_size
 # 使用例
 if __name__ == "__main__":
     # パラメータ設定
-    IMAGE_PATH = './tif/input.tif'  # TIF画像のパス
+    IMAGE_PATH = './image.tif'  # TIF画像のパス
     TARGET_DPI = 50  # ダウンサンプリング後のDPI
     L_VALUES = [0, 20, 50]  # ab平面を表示するL値
     PLOT_SIZE = 3  # プロットサイズ
