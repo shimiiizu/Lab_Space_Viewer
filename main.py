@@ -187,7 +187,7 @@ def analyze_tif_image(image_path, target_dpi=50, L_values=[0, 20, 50], plot_size
 # 使用例
 if __name__ == "__main__":
     # パラメータ設定
-    IMAGE_PATH = './image.tif'  # TIF画像のパス
+    IMAGE_PATH = './tif/input.tif'  # TIF画像のパス
     TARGET_DPI = 50  # ダウンサンプリング後のDPI
     L_VALUES = [0, 20, 50]  # ab平面を表示するL値
     PLOT_SIZE = 3  # プロットサイズ
